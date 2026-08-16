@@ -3,7 +3,6 @@ import {
   fetchDocuments,
   createDocument,
   deleteDocument,
-  updateDocument,
 } from "../features/documentThunks";
 
 const initialState = {
@@ -27,40 +26,40 @@ const documentSlice = createSlice({
       })
       .addCase(fetchDocuments.fulfilled, (state, action) => {
         state.loading = false;
-        state.documents = Array.isArray(action.payload) ? action.payload : [];
+        state.documents = action.payload;
       })
       .addCase(fetchDocuments.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        state.documents = [];
       })
 
       // Create
       .addCase(createDocument.fulfilled, (state, action) => {
-        const newDoc = action.payload?.document || action.payload;
-        if (newDoc && typeof newDoc === "object") {
-          state.documents.unshift(newDoc);
-        }
+        state.documents.unshift(action.payload);
       })
 
       // Delete
       .addCase(deleteDocument.fulfilled, (state, action) => {
         state.documents = state.documents.filter(
-          (doc) => (doc.id || doc._id) !== action.payload
+          (doc) => doc.id !== action.payload
         );
-      })
+      });
+  },
+});
 
+export const { resetDocuments } = documentSlice.actions;
+export default documentSlice.reducer;
       // Update
       .addCase(updateDocument.fulfilled, (state, action) => {
-        const updatedDoc = action.payload.document || action.payload;
-        if (updatedDoc && (updatedDoc.id || updatedDoc._id)) {
-          const targetId = updatedDoc.id || updatedDoc._id;
-          const index = state.documents.findIndex(d => (d.id || d._id) === targetId);
-          if (index !== -1) {
-            state.documents[index] = updatedDoc;
-          }
-        }
-      });
+  const updatedDoc = action.payload.document || action.payload;
+  if (updatedDoc && (updatedDoc.id || updatedDoc._id)) {
+    const targetId = updatedDoc.id || updatedDoc._id;
+    const index = state.documents.findIndex(d => (d.id || d._id) === targetId);
+    if (index !== -1) {
+      state.documents[index] = updatedDoc;
+    }
+  }
+});
   },
 });
 

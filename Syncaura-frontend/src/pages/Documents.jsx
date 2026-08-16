@@ -1,7 +1,7 @@
-import { Download, ListFilter, Plus, Search, RefreshCw } from "lucide-react";
+import { Download, ListFilter, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchDocuments, createDocument, deleteDocument } from "../redux/features/documentThunks";
+import { fetchDocuments, createDocument } from "../redux/features/documentThunks";
 import TableRow from "../components/Document/TableRow";
 import DocumentModal from "../components/Document/DocumentModel";
 import VersionHistoryDrawer from "../components/Document/DetailAboutDcument/VersionHistoryDrawer";
@@ -10,9 +10,7 @@ import DocumentFilter from "../components/Document/DocumentFilter";
 
 export default function Documents() {
   const dispatch = useDispatch();
-  const { documents: rawDocuments, loading, error } = useSelector((state) => state.documents || {});
-
-  const documents = useMemo(() => (Array.isArray(rawDocuments) ? rawDocuments : []), [rawDocuments]);
+  const { documents, loading, error } = useSelector((state) => state.documents);
 
   const tab = ["All Files", "Recent", "Shared with me", "Achived"];
   const [selectedTab, setSelectedTab] = useState("All Files");
@@ -42,60 +40,29 @@ export default function Documents() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const parseVersion = (version) => {
+    if (!version) return 0;
+    return Number(version.replace("v", ""));
+  };
+
   const filteredDocuments = useMemo(() => {
-    let result = Array.isArray(documents) ? [...documents] : [];
+    let result = [...documents];
 
     if (debouncedValue) {
       result = result.filter(
         (item) =>
-          item?.title?.toLowerCase().includes(debouncedValue) ||
-          item?.content?.toLowerCase().includes(debouncedValue) ||
-          item?.type?.toLowerCase().includes(debouncedValue)
+          item.title?.toLowerCase().includes(debouncedValue) ||
+          item.content?.toLowerCase().includes(debouncedValue)
       );
     }
 
     if (appliedFilters) {
-      const { date, type, status, version, versionNo } = appliedFilters;
-
-      // Date Filter
+      const { date } = appliedFilters;
       if (date) {
         const selectedDate = new Date(date);
-        result = result.filter((item) => {
-          const itemDate = new Date(item?.updated_at || item?.updatedAt || item?.created_at || item?.createdAt);
-          return !isNaN(itemDate.getTime()) && itemDate >= selectedDate;
-        });
-      }
-
-      // Type Filter
-      if (type && type !== "ALL") {
-        result = result.filter((item) => {
-          const itemType = (item?.type || (item?.content ? "Document" : "Report")).toUpperCase();
-          const targetType = type.toUpperCase();
-          return itemType.includes(targetType) || targetType.includes(itemType);
-        });
-      }
-
-      // Status Filter
-      if (status && status !== "ALL") {
-        result = result.filter((item) => {
-          const itemStatus = (item?.status || "Active").toUpperCase();
-          return itemStatus === status.toUpperCase();
-        });
-      }
-
-      // Version Filter
-      if (versionNo && versionNo !== "ALL") {
-        const targetVerNum = parseFloat(versionNo.replace("v", "")) || 1.0;
-        result = result.filter((item) => {
-          const itemVerStr = item?.versions?.length ? `v${item.versions.length}.0` : "v1.0";
-          const itemVerNum = parseFloat(itemVerStr.replace("v", "")) || 1.0;
-          if (version === "Above") {
-            return itemVerNum >= targetVerNum;
-          } else if (version === "Below") {
-            return itemVerNum <= targetVerNum;
-          }
-          return itemVerNum === targetVerNum;
-        });
+        result = result.filter(
+          (item) => new Date(item.updatedAt) >= selectedDate
+        );
       }
     }
 
@@ -110,19 +77,8 @@ export default function Documents() {
     setAppliedFilters(newFilters);
   };
 
-  const handleAddDocument = async (docData) => {
-    try {
-      await dispatch(createDocument(docData)).unwrap();
-      dispatch(fetchDocuments());
-    } catch (err) {
-      console.error("Error adding document:", err);
-    }
-  };
-
-  const handleDeleteDocument = (id) => {
-    if (window.confirm("Are you sure you want to delete this document?")) {
-      dispatch(deleteDocument(id));
-    }
+  const handleAddDocument = (docData) => {
+    dispatch(createDocument(docData));
   };
 
   return (
@@ -132,7 +88,7 @@ export default function Documents() {
           <h1 className="text-[#000000] text-xl lg:text-2xl font-semibold dark:text-[#FFFFFF]">Documents and Report</h1>
         </div>
         <div className="flex items-center justify-end">
-          <div className="flex items-center justify-center rounded-4xl border gap-2 border-[#2461E6] dark:border-[#73FBFD] px-3 sm:px-5 py-1 sm:py-2 cursor-pointer btn-hover">
+          <div className="flex items-center justify-center rounded-4xl border gap-2 border-[#2461E6] dark:border-[#73FBFD] px-3 sm:px-5 py-1 sm:py-2">
             <Download className="text-[#2457C5] dark:text-[#73FBFD] size-4 sm:size-5" />
             <p className="text-xs sm:text-base font-bold text-[#2457C5] dark:text-[#73FBFD]">Export All</p>
           </div>
@@ -145,11 +101,10 @@ export default function Documents() {
             <button
               onClick={() => setSelectedTab(item)}
               key={item}
-              className={`btn-hover flex items-center border justify-center py-2 w-32 ${
-                selectedTab === item
-                  ? "bg-[#EFF6FF] dark:bg-[#344343] border-[#DBEAFE] dark:border-[#73FBFD] text-[#1D6BE3] dark:text-[#73FBFD]"
-                  : "border-[#EAECEF] text-[#989696] cursor-pointer"
-              } rounded-xl`}
+              className={`btn-hover flex items-center border justify-center py-2 w-32 ${selectedTab === item
+                ? "bg-[#EFF6FF] dark:bg-[#344343] border-[#DBEAFE] dark:border-[#73FBFD] text-[#1D6BE3] dark:text-[#73FBFD]"
+                : "border-[#EAECEF] text-[#989696] cursor-pointer"
+                } rounded-xl`}
             >
               <h1 className="text-sm font-semibold">{item}</h1>
             </button>
@@ -159,9 +114,8 @@ export default function Documents() {
         <div className="flex items-center relative md:static justify-center md:justify-end flex-nowrap gap-5 px-2 sm:px-7 w-full sm:w-auto">
           <button
             onClick={() => setShowFilter((prev) => !prev)}
-            className={`btn-hover px-4 py-2 bg-white dark:bg-[#292828] flex items-center gap-2 border rounded-xl ${
-              showFilter ? "border-[#2461E6] dark:border-[#73FBFD]" : "border-[#EAECEF] dark:border-[#575757]"
-            }`}
+            className={`btn-hover px-4 py-2 bg-white dark:bg-[#292828] flex items-center gap-2 border rounded-xl ${showFilter ? "border-[#2461E6] dark:border-[#73FBFD]" : "border-[#EAECEF] dark:border-[#575757]"
+              }`}
           >
             <ListFilter className={`size-5 ${showFilter ? "text-[#2461E6] dark:text-[#73FBFD]" : "text-[#082A44] dark:text-[#B2B2B2]"}`} />
             <h1 className={`text-sm ${showFilter ? "text-[#2461E6] dark:text-[#73FBFD]" : "text-[#082A44] dark:text-[#B2B2B2]"} font-semibold`}>Filter</h1>
@@ -204,54 +158,32 @@ export default function Documents() {
           </div>
 
           {loading && <p className="text-gray-400 text-center py-10">Loading documents...</p>}
-
-          {error && (
-            <div className="flex flex-col items-center justify-center py-10 gap-3">
-              <p className="text-red-400 text-center text-base font-medium">
-                {typeof error === "string" ? error : error?.message || "Failed to load documents."}
-              </p>
-              <button
-                onClick={() => dispatch(fetchDocuments())}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 dark:bg-[#73FBFD] dark:text-black text-white rounded-xl hover:bg-blue-700 font-medium btn-hover"
-              >
-                <RefreshCw className="size-4" />
-                Retry
-              </button>
-            </div>
-          )}
-
+          {error && <p className="text-red-400 text-center py-10">Failed to load documents.</p>}
           {!loading && !error && selectedDocList.length === 0 && (
             <p className="text-gray-400 text-center py-10">No documents found.</p>
           )}
 
           <div className="flex flex-col items-center justify-center w-full gap-3">
-            {selectedDocList.map((item, idx) => {
-              if (!item) return null;
-              const docId = item.id || item._id || idx;
-              return (
-                <div
-                  onClick={() => setCurrId(docId)}
-                  key={docId}
-                  className={`flex relative transition-all duration-300 items-center justify-between w-full bg-[#FFFFFF] dark:bg-[#000000] py-6 ${
-                    currId === docId
-                      ? "bg-blue-50 dark:bg-[#1C3939]"
-                      : "hover:bg-[#d1d4db75] dark:hover:bg-gray-800 hover:scale-[1.01] cursor-pointer"
+            {selectedDocList.map((item, idx) => (
+              <div
+                onClick={() => setCurrId(item._id || item.id)}
+                key={item._id || item.id}
+                className={`flex relative transition-all duration-300 items-center justify-between w-full bg-[#FFFFFF] dark:bg-[#000000] py-6 ${currId === (item._id || item.id)
+                  ? "bg-blue-50 dark:bg-[#1C3939]"
+                  : "hover:bg-[#d1d4db75] dark:hover:bg-gray-800 hover:scale-[1.01] cursor-pointer"
                   }`}
-                >
-                  <span className={`absolute left-0 top-0 h-full w-1 bg-blue-500 dark:bg-gray-400 transition-transform duration-300 ${currId === docId ? "scale-y-100" : "scale-y-0 group-hover:scale-y-100"}`} />
-                  <TableRow
-                    name={item.title || "Untitled Document"}
-                    type={item.type || (item.content ? "Document" : "Report")}
-                    date={item.updated_at || item.updatedAt || item.created_at || item.createdAt}
-                    status="Active"
-                    version={item.versions?.length ? `v${item.versions.length}` : "v1"}
-                    docColor={idx % 3 === 0 ? "text-[#DC2626]" : idx % 3 === 1 ? "text-[#9333EA]" : "text-[#2563EB]"}
-                    onEdit={() => setCurrId(docId)}
-                    onDelete={() => handleDeleteDocument(docId)}
-                  />
-                </div>
-              );
-            })}
+              >
+                <span className={`absolute left-0 top-0 h-full w-1 bg-blue-500 dark:bg-gray-400 transition-transform duration-300 ${currId === (item._id || item.id) ? "scale-y-100" : "scale-y-0 group-hover:scale-y-100"}`} />
+                <TableRow
+                  name={item.title}
+                  type={item.content ? "Document" : "—"}
+                  date={item.updatedAt}
+                  status="Active"
+                  version={item.versions?.length ? `v${item.versions.length}` : "v1"}
+                  docColor={idx % 3 === 0 ? "text-[#DC2626]" : idx % 3 === 1 ? "text-[#9333EA]" : "text-[#2563EB]"}
+                />
+              </div>
+            ))}
 
             {selectedDocList.length < filteredDocuments.length && (
               <div className="w-full flex items-center justify-center mt-4">
@@ -274,7 +206,7 @@ export default function Documents() {
 
       <button
         onClick={() => setShowModal(true)}
-        className="fixed bottom-8 right-8 flex items-center gap-2 rounded-full bg-blue-600 dark:bg-[#73FBFD] dark:text-black transition duration-500 px-6 py-3 text-white shadow-lg hover:bg-blue-400 dark:hover:bg-[#2cc4c7] btn-hover z-50"
+        className="fixed bottom-8 right-8 flex items-center gap-2 rounded-full bg-blue-600 dark:bg-[#73FBFD] dark:text-black transition duration-500 px-6 py-3 text-white shadow-lg hover:bg-blue-400 dark:hover:bg-[#2cc4c7] btn-hover"
       >
         <Plus size={18} />
         New Report
@@ -287,5 +219,10 @@ export default function Documents() {
         <VersionHistoryDrawer open={currId !== null} onClose={() => setCurrId(null)} />
       )}
     </div>
+  );
+}
+<VersionHistoryDrawer open={currId !== null} onClose={() => setCurrId(null)} />
+      )}
+    </div >
   );
 }

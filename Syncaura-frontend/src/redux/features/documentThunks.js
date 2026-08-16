@@ -12,19 +12,9 @@ export const fetchDocuments = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await api.get("/documents");
-      const data = res.data;
-      if (Array.isArray(data)) {
-        return data;
-      }
-      if (data && Array.isArray(data.documents)) {
-        return data.documents;
-      }
-      if (data && data.message) {
-        return rejectWithValue(data.message);
-      }
-      return [];
+      return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.response?.data || "Failed to fetch documents");
+      return rejectWithValue(err.response?.data || "Failed to fetch documents");
     }
   }
 );

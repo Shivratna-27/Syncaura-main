@@ -22,15 +22,12 @@ export default function DocumentModal({ onClose, addReport }) {
   const fileRef = useRef(null);
 
   const onSubmit = (data) => {
-    const title = data.description || data.type || data.category || "New Report";
-    const docPayload = {
-      title: title,
-      content: data.description || "",
-      type: data.type || "Document",
-      category: data.category || "GENERAL",
-    };
-    addReport(docPayload);
-    onClose();
+    const id = `#${Date.now().toString().slice(0, 4)}`;
+    const category = data.category;
+    const title = data.description
+    const type = data.type;
+    addReport((prev) => [{ id, category, type, title }, ...prev])
+    onClose()
   };
   const onError = (formErrors) => {
     console.log("Form Errors:", formErrors);

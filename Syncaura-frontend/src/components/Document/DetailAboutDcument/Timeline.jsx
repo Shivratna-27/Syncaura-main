@@ -69,3 +69,16 @@ const Timeline = () => {
 };
 
 export default Timeline;
+<TimelineItem
+  key={index}
+  item={item}
+  index={index}
+  lineProgress={lineProgress}
+/>
+        ))}
+      </div >
+    </div >
+  );
+};
+
+export default Timeline;
