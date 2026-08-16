@@ -12,9 +12,19 @@ export const fetchDocuments = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await api.get("/documents");
-      return res.data;
+      const data = res.data;
+      if (Array.isArray(data)) {
+        return data;
+      }
+      if (data && Array.isArray(data.documents)) {
+        return data.documents;
+      }
+      if (data && data.message) {
+        return rejectWithValue(data.message);
+      }
+      return [];
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Failed to fetch documents");
+      return rejectWithValue(err.response?.data?.message || err.response?.data || "Failed to fetch documents");
     }
   }
 );
@@ -41,6 +51,19 @@ export const deleteDocument = createAsyncThunk(
       return id;
     } catch (err) {
       return rejectWithValue(err.response?.data || "Failed to delete document");
+    }
+  }
+);
+
+
+export const updateDocument = createAsyncThunk(
+  "documents/update",
+  async ({ id, title, content }, { rejectWithValue }) => {
+    try {
+      const res = await api.put(`/documents/${id}`, { title, content });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || "Failed to update document");
     }
   }
 );

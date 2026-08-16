@@ -177,10 +177,18 @@ export default function App() {
 
             <Route
               element={
-                <ProtectRoute allowedRoles={["user", "admin", "co-admin"]} />
+                <ProtectRoute allowedRoles={["user", "admin", "co-admin", "employee"]} />
               }
             >
               <Route path="/meet/:id" element={<CurrentMeet />} />
+              <Route
+                path="/documents"
+                element={
+                  <MainLayout TopbarComponent={Header} SideBar={MobileSidebar}>
+                    <Documents />
+                  </MainLayout>
+                }
+              />
             </Route>
 
             <Route element={<ProtectRoute allowedRoles={["admin"]} />}>
@@ -281,15 +289,6 @@ export default function App() {
                 element={
                   <MainLayout TopbarComponent={Header} SideBar={MobileSidebar}>
                     <Notice />
-                  </MainLayout>
-                }
-              />
-
-              <Route
-                path="/documents"
-                element={
-                  <MainLayout TopbarComponent={Header} SideBar={MobileSidebar}>
-                    <Documents />
                   </MainLayout>
                 }
               />

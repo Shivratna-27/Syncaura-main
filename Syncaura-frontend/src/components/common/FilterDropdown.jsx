@@ -12,7 +12,7 @@ export default function FilterDropdown({ startVal, options, label, onChange }) {
   return (
     <div className="flex flex-col gap-2  relative">
       {/* Label */}
-      <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+      <label className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
         {label}
       </label>
 
@@ -23,10 +23,10 @@ export default function FilterDropdown({ startVal, options, label, onChange }) {
         onClick={() => setOpen((p) => !p)}
         className="
           w-full flex items-center justify-between
-          rounded-full px-4 py-2 text-sm
-          border border-gray-200 dark:border-[#3A3A3A]
-          bg-white dark:bg-[#121212]
-          text-gray-800 dark:text-gray-200
+          rounded-xl px-3.5 py-2.5 text-sm
+          border border-gray-300 dark:border-[#333333]
+          bg-white dark:bg-[#242424]
+          text-gray-900 dark:text-gray-100
           focus:outline-none
         "
       >
