@@ -14,17 +14,31 @@ const Projects = () => {
   const [appliedFilters, setAppliedFilters] = useState(null);
   const [direction, setDirection] = useState(0);
 
+  const [projectsList, setProjectsList] = useState(PROJECTS);
+
+  const handleAddProject = (newProject) => {
+    setProjectsList((prev) => [newProject, ...prev]);
+  };
+
   const tabData = [
-    { title: "All Projects", count: PROJECTS.length },
-    { title: "Ongoing", count: PROJECTS.filter((item) => item.priority === "Ongoing").length },
-    { title: "Completed", count: PROJECTS.filter((item) => item.priority === "Completed").length },
-    { title: "On Hold", count: PROJECTS.filter((item) => item.priority === "On Hold").length },
+    { title: "All Projects", count: projectsList.length },
+    { title: "Ongoing", count: projectsList.filter((item) => item.priority === "Ongoing").length },
+    { title: "Completed", count: projectsList.filter((item) => item.priority === "Completed").length },
+    { title: "On Hold", count: projectsList.filter((item) => item.priority === "On Hold").length },
   ];
 
-  const filteredProjects =
+  let filteredProjects =
     currTab === "All Projects"
-      ? PROJECTS
-      : PROJECTS.filter((item) => item.priority === currTab);
+      ? projectsList
+      : projectsList.filter((item) => item.priority === currTab);
+
+  if (appliedFilters) {
+    if (appliedFilters.priority) {
+      filteredProjects = filteredProjects.filter(
+        (item) => item.priority === appliedFilters.priority
+      );
+    }
+  }
 
 
   const handleApplyFilters = (newFilters) => {
@@ -143,7 +157,12 @@ const Projects = () => {
         </AnimatePresence>
         
       </div>
-      {showModel && <CreateNewProject onClose={() => setShowModel(false)} />}
+      {showModel && (
+        <CreateNewProject
+          onClose={() => setShowModel(false)}
+          onAddProject={handleAddProject}
+        />
+      )}
     </div>
   );
 };

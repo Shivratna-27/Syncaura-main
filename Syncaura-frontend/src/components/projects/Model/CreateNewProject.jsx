@@ -4,7 +4,7 @@ import MotionSelect from "./MotionSelect";
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 
-const CreateNewProject = ({ onClose }) => {
+const CreateNewProject = ({ onClose, onAddProject }) => {
   const teams = ["Design", "Development", "Marketing", "HR", "Sales"];
 
   const projectStatus = [
@@ -49,6 +49,43 @@ const CreateNewProject = ({ onClose }) => {
   const today = new Date().toISOString().split("T")[0];
 
   const onSubmit = (data) => {
+    let mappedPriority = "Ongoing";
+    if (data.status === "Completed") {
+      mappedPriority = "Completed";
+    } else if (data.status === "On Hold") {
+      mappedPriority = "On Hold";
+    } else if (selectPriority === "Critical" || data.priority === "Critical") {
+      mappedPriority = "Critical";
+    } else {
+      mappedPriority = "Ongoing";
+    }
+
+    const newProject = {
+      id: Date.now(),
+      title: data.projectName || "New Project",
+      department: data.team
+        ? data.team.includes("Team") || data.team.includes("Dept")
+          ? data.team
+          : `${data.team} Team`
+        : "Development Team",
+      priority: mappedPriority,
+      progress:
+        data.status === "Completed"
+          ? 100
+          : data.status === "Not Started" || data.status === "Backlog"
+          ? 0
+          : 25,
+      dueDate: data.endDate || data.startDate || new Date().toISOString(),
+      avatars: [
+        "https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg",
+        "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg",
+        "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg",
+      ],
+    };
+
+    if (onAddProject) {
+      onAddProject(newProject);
+    }
     onClose();
   };
 
