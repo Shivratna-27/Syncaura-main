@@ -42,10 +42,10 @@ export const getProjectById = async (req, res) => {
   try {
 
     if (!isUUID(req.params.id)) {
-  return res.status(400).json({
-    message: "Invalid project ID"
-  });
-}
+      return res.status(400).json({
+        message: "Invalid project ID"
+      });
+    }
     const result = await pool.query(
       "SELECT * FROM projects WHERE id = $1",
       [req.params.id]
@@ -98,7 +98,7 @@ export const updateProject = async (req, res) => {
 
     values.push(req.params.id);
     const query = `UPDATE projects SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING *`;
-    
+
     const result = await pool.query(query, values);
 
     if (result.rowCount === 0) {

@@ -1,4 +1,4 @@
-import { logTaskActivity } from "../utils/taskActivityLogger.js";
+iimport { logTaskActivity } from "../utils/taskActivityLogger.js";
 import pool from "../config/db.js";
 import { validate as isUUID } from "uuid";
 
@@ -7,13 +7,26 @@ import { validate as isUUID } from "uuid";
  */
 export const createTask = async (req, res) => {
   try {
-    const { 
-      title, description, priority, assignedTo, deadline, status, 
-      projectId, startDate, endDate, dependencies, reminderAt 
+    const {
+      title, description, priority, assignedTo, deadline, status,
+      projectId, startDate, endDate, dependencies, reminderAt
     } = req.body;
 
-    // RBAC: Fallback to logged-in user if assignedTo is omitted
-    const finalAssignedTo = assignedTo || req.user?.id;
+    const cleanDate = (d) => (d && typeof d === "string" && d.trim() !== "" ? d : null);
+
+    const finalDeadline = cleanDate(deadline);
+    const finalStartDate = cleanDate(startDate);
+    const finalEndDate = cleanDate(endDate);
+    const finalReminderAt = cleanDate(reminderAt) || finalDeadline;
+    const finalProjectId = (projectId && isUUID(projectId)) ? projectId : null;
+    const finalAssignedTo = (assignedTo && typeof assignedTo === "string" && assignedTo.trim() !== "")
+      ? assignedTo.trim()
+      : (req.user?.name || req.user?.id || null);
+
+    // Auto-migrate columns if missing in tasks table
+    await pool.query("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS start_date TIMESTAMP;");
+    await pool.query("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS end_date TIMESTAMP;");
+    await pool.query("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_at TIMESTAMP;");
 
     const result = await pool.query(
       `INSERT INTO tasks (
@@ -22,21 +35,33 @@ export const createTask = async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
       RETURNING *`,
       [
-        title, description, priority || "medium", finalAssignedTo, deadline, 
-        status || "TODO", projectId || null, startDate || null, 
-        endDate || null, reminderAt || deadline || null
+        title,
+        description || "",
+        priority || "medium",
+        finalAssignedTo,
+        finalDeadline,
+        status || "TODO",
+        finalProjectId,
+        finalStartDate,
+        finalEndDate,
+        finalReminderAt
       ]
     );
 
-    const task = result.rows[0];
+    const task = {
+      ...result.rows[0],
+      assignedTo: result.rows[0].assigned_to,
+    };
 
     // Handle dependencies
     if (dependencies && Array.isArray(dependencies)) {
       for (const depId of dependencies) {
-        await pool.query(
-          "INSERT INTO task_dependencies (task_id, dependency_id) VALUES ($1, $2)",
-          [task.id, depId]
-        );
+        if (isUUID(depId)) {
+          await pool.query(
+            "INSERT INTO task_dependencies (task_id, dependency_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            [task.id, depId]
+          );
+        }
       }
       task.dependencies = dependencies;
     }
@@ -51,7 +76,8 @@ export const createTask = async (req, res) => {
 
     res.status(201).json(task);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Create Task Error:", error);
+    res.status(500).json({ message: error.message || "Failed to create task" });
   }
 };
 
@@ -76,45 +102,52 @@ export const getAllTasks = async (req, res) => {
       });
     }
 
-    let query = "SELECT * FROM tasks";
+    let query = `
+      SELECT 
+        t.*,
+        COALESCE(u.name, t.assigned_to) AS "assignedTo",
+        COALESCE(u.name, t.assigned_to) AS assigned_to
+      FROM tasks t
+      LEFT JOIN users u ON t.assigned_to::text = u.id::text OR t.assigned_to = u.name OR t.assigned_to = u.email
+    `;
     const conditions = [];
     const values = [];
 
     // Project Filter
     if (projectId) {
       values.push(projectId);
-      conditions.push(`project_id = $${values.length}`);
+      conditions.push(`t.project_id = $${values.length}`);
     }
 
     // Assignee Filter
     if (assignedTo) {
       values.push(assignedTo);
-      conditions.push(`assigned_to = $${values.length}`);
+      conditions.push(`(t.assigned_to = $${values.length} OR u.name ILIKE $${values.length})`);
     }
 
     // Priority Filter
     if (priority) {
       values.push(priority);
-      conditions.push(`priority = $${values.length}`);
+      conditions.push(`t.priority = $${values.length}`);
     }
 
     // Status Filter
     if (status) {
       values.push(status);
-      conditions.push(`status = $${values.length}`);
+      conditions.push(`t.status = $${values.length}`);
     }
 
     // Due Date Filter
     if (deadline) {
       values.push(deadline);
-      conditions.push(`DATE(deadline) = DATE($${values.length})`);
+      conditions.push(`DATE(t.deadline) = DATE($${values.length})`);
     }
 
     // Search by title or description
     if (search) {
       values.push(`%${search}%`);
       conditions.push(
-        `(title ILIKE $${values.length} OR description ILIKE $${values.length})`
+        `(t.title ILIKE $${values.length} OR t.description ILIKE $${values.length})`
       );
     }
 
@@ -124,7 +157,7 @@ export const getAllTasks = async (req, res) => {
     }
 
     // Sort latest first
-    query += " ORDER BY created_at DESC";
+    query += " ORDER BY t.created_at DESC";
 
     const result = await pool.query(query, values);
 
@@ -145,7 +178,16 @@ export const getAllTasks = async (req, res) => {
 export const getTaskById = async (req, res) => {
   try {
     const { id } = req.params;
-    const taskResult = await pool.query("SELECT * FROM tasks WHERE id = $1", [id]);
+    const taskResult = await pool.query(
+      `SELECT 
+        t.*,
+        COALESCE(u.name, t.assigned_to) AS "assignedTo",
+        COALESCE(u.name, t.assigned_to) AS assigned_to
+       FROM tasks t
+       LEFT JOIN users u ON t.assigned_to::text = u.id::text OR t.assigned_to = u.name OR t.assigned_to = u.email
+       WHERE t.id = $1`,
+      [id]
+    );
 
     if (taskResult.rowCount === 0) {
       return res.status(404).json({ message: "Task not found" });
@@ -176,9 +218,9 @@ export const getTaskById = async (req, res) => {
 export const updateTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      title, description, priority, assignedTo, deadline, status, 
-      projectId, startDate, endDate, reminderAt 
+    const {
+      title, description, priority, assignedTo, deadline, status,
+      projectId, startDate, endDate, reminderAt
     } = req.body;
 
     // Fetch existing task to check permissions
@@ -209,7 +251,7 @@ export const updateTask = async (req, res) => {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $11 RETURNING *`,
       [
-        title, description, priority, assignedTo, deadline, status, 
+        title, description, priority, assignedTo, deadline, status,
         projectId, startDate, endDate, reminderAt, id
       ]
     );
@@ -270,7 +312,7 @@ export const deleteTask = async (req, res) => {
 export const updateTaskStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const { id: userId, role } = req.user; 
+    const { id: userId, role } = req.user;
     const { id: taskId } = req.params;
 
     const allowedStatus = ["TODO", "IN_PROGRESS", "DONE"];
@@ -351,7 +393,7 @@ export const getGanttData = async (req, res) => {
     const ganttTasks = result.rows.map(task => ({
       id: task.id,
       name: task.title,
-      start: task.start_date.toISOString().split("T")[0], 
+      start: task.start_date.toISOString().split("T")[0],
       end: task.end_date.toISOString().split("T")[0],
       progress: task.status === "DONE" ? 100 : 0
     }));

@@ -2,11 +2,17 @@ import { FileText } from "lucide-react";
 
 const TableRow = ({ name, type, version, date, status, docColor }) => {
   function formatDateYYYYMMDD(isoDate) {
-    return new Date(isoDate).toISOString().split("T")[0];
+    if (!isoDate) return "—";
+    try {
+      return new Date(isoDate).toISOString().split("T")[0];
+    } catch {
+      return String(isoDate);
+    }
   }
 
   const statusColor = {
     Final: "bg-[#DCFCE7] text-[#29CC39]",
+    Active: "bg-[#DCFCE7] text-[#29CC39]",
     Draft: "bg-[#FEF9C3] text-[#954D4E]",
     Revised: "bg-[#DBEAFE] text-[#3053B4]",
   };
@@ -35,7 +41,7 @@ const TableRow = ({ name, type, version, date, status, docColor }) => {
 
         <div className="flex-2/13 w-full flex items-center justify-center">
           <div
-            className={`w-25 flex items-center justify-center py-1.5 rounded-md text-sm font-medium  ${statusColor[status]}`}
+            className={`w-25 flex items-center justify-center py-1.5 rounded-md text-sm font-medium ${statusColor[status] || "bg-[#DCFCE7] text-[#29CC39]"}`}
           >
             {status}
           </div>
@@ -50,7 +56,6 @@ const TableRow = ({ name, type, version, date, status, docColor }) => {
 
       <div className="md:hidden w-full px-4">
         <div className="flex flex-col gap-3 rounded-xl border bg-white dark:bg-black p-4 shadow-sm">
-
           <div className="flex items-center gap-3">
             <FileText className={`size-7 ${docColor}`} />
             <h1 className="font-semibold text-black dark:text-white text-sm break-all">
@@ -79,7 +84,7 @@ const TableRow = ({ name, type, version, date, status, docColor }) => {
             <div>
               <p className="text-gray-500">Status</p>
               <span
-                className={`inline-block px-5 py-1 mt-2 rounded-md text-xs font-medium ${statusColor[status]}`}
+                className={`inline-block px-5 py-1 mt-2 rounded-md text-xs font-medium ${statusColor[status] || "bg-[#DCFCE7] text-[#29CC39]"}`}
               >
                 {status}
               </span>

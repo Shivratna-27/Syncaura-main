@@ -162,7 +162,7 @@ const TaskDetailModal = ({ task, onClose, onDeleted, canDelete }) => {
               </p>
               <div className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
                 <User className="w-3.5 h-3.5 text-gray-400" />
-                {task.assignedTo || "Unassigned"}
+                {task.assignedTo || task.assigned_to || task.assigned_user_name || "Unassigned"}
               </div>
             </div>
           </div>

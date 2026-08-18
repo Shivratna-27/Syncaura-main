@@ -125,7 +125,12 @@ export default function Documents() {
   };
 
   const handleAddDocument = (docData) => {
-    dispatch(createDocument(docData));
+    if (typeof docData === "function") {
+      setSelectedDocList((prev) => docData(prev));
+    } else if (docData) {
+      setSelectedDocList((prev) => [docData, ...(prev || [])]);
+      dispatch(createDocument(docData));
+    }
   };
 
   return (
@@ -148,11 +153,10 @@ export default function Documents() {
             <button
               onClick={() => setSelectedTab(item)}
               key={item}
-              className={`btn-hover flex items-center border justify-center py-2 w-32 ${
-                selectedTab === item
-                  ? "bg-[#EFF6FF] dark:bg-[#344343] border-[#DBEAFE] dark:border-[#73FBFD] text-[#1D6BE3] dark:text-[#73FBFD]"
-                  : "border-[#EAECEF] text-[#989696] cursor-pointer"
-              } rounded-xl`}
+              className={`btn-hover flex items-center border justify-center py-2 w-32 ${selectedTab === item
+                ? "bg-[#EFF6FF] dark:bg-[#344343] border-[#DBEAFE] dark:border-[#73FBFD] text-[#1D6BE3] dark:text-[#73FBFD]"
+                : "border-[#EAECEF] text-[#989696] cursor-pointer"
+                } rounded-xl`}
             >
               <h1 className="text-sm font-semibold">{item}</h1>
             </button>
@@ -162,9 +166,8 @@ export default function Documents() {
         <div className="flex items-center relative md:static justify-center md:justify-end flex-nowrap gap-5 px-2 sm:px-7 w-full sm:w-auto">
           <button
             onClick={() => setShowFilter((prev) => !prev)}
-            className={`btn-hover px-4 py-2 bg-white dark:bg-[#292828] flex items-center gap-2 border rounded-xl ${
-              showFilter || appliedFilters ? "border-[#2461E6] dark:border-[#73FBFD]" : "border-[#EAECEF] dark:border-[#575757]"
-            }`}
+            className={`btn-hover px-4 py-2 bg-white dark:bg-[#292828] flex items-center gap-2 border rounded-xl ${showFilter || appliedFilters ? "border-[#2461E6] dark:border-[#73FBFD]" : "border-[#EAECEF] dark:border-[#575757]"
+              }`}
           >
             <ListFilter className={`size-5 ${showFilter || appliedFilters ? "text-[#2461E6] dark:text-[#73FBFD]" : "text-[#082A44] dark:text-[#B2B2B2]"}`} />
             <h1 className={`text-sm ${showFilter || appliedFilters ? "text-[#2461E6] dark:text-[#73FBFD]" : "text-[#082A44] dark:text-[#B2B2B2]"} font-semibold`}>
@@ -228,11 +231,10 @@ export default function Documents() {
               <div
                 onClick={() => setCurrId(item._id || item.id)}
                 key={item._id || item.id || idx}
-                className={`flex relative transition-all duration-300 items-center justify-between w-full bg-[#FFFFFF] dark:bg-[#000000] py-6 ${
-                  currId === (item._id || item.id)
-                    ? "bg-blue-50 dark:bg-[#1C3939]"
-                    : "hover:bg-[#d1d4db75] dark:hover:bg-gray-800 hover:scale-[1.01] cursor-pointer"
-                }`}
+                className={`flex relative transition-all duration-300 items-center justify-between w-full bg-[#FFFFFF] dark:bg-[#000000] py-6 ${currId === (item._id || item.id)
+                  ? "bg-blue-50 dark:bg-[#1C3939]"
+                  : "hover:bg-[#d1d4db75] dark:hover:bg-gray-800 hover:scale-[1.01] cursor-pointer"
+                  }`}
               >
                 <span className={`absolute left-0 top-0 h-full w-1 bg-blue-500 dark:bg-gray-400 transition-transform duration-300 ${currId === (item._id || item.id) ? "scale-y-100" : "scale-y-0 group-hover:scale-y-100"}`} />
                 <TableRow
@@ -267,7 +269,7 @@ export default function Documents() {
 
       <button
         onClick={() => setShowModal(true)}
-        className="fixed bottom-8 right-8 flex items-center gap-2 rounded-full bg-blue-600 dark:bg-[#73FBFD] dark:text-black transition duration-500 px-6 py-3 text-white shadow-lg hover:bg-blue-400 dark:hover:bg-[#2cc4c7] btn-hover"
+        className="fixed bottom-8 right-8 flex items-center gap-2 rounded-full bg-blue-600 dark:bg-[#73FBFD] dark:text-black transition duration-500 px-6 py-3 text-[#FFFFFF] shadow-lg hover:bg-blue-400 dark:hover:bg-[#2cc4c7] btn-hover"
       >
         <Plus size={18} />
         New Report
